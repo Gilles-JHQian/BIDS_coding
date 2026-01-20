@@ -873,7 +873,7 @@ class Data2Bids:  # main conversion and file organization program
                 array = np.reshape(data, [len(headers_dict), -1], order='F')
                 # byte order is Fortran encoding, dont know why
                 signal_headers = highlevel.make_signal_headers(
-                    headers_dict, sample_rate=self.sample_rate[part_match],
+                    headers_dict, sample_frequency=self.sample_rate[part_match],
                     physical_max=np.amax(array), physical_min=(np.amin(array)))
                 print("converting binary" + source + " to edf" +
                       op.splitext(source)[0] + ".edf")

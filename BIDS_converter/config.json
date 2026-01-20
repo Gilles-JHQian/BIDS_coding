@@ -24,6 +24,11 @@
     ],
     "binary?": true,
     "binaryEncoding": "float32",
+    "type": "ECOG",
+    "units": "uV",
+    "channels": {
+      "experiment.mat": "channels"
+    },
     "headerData": {
       "experiment.mat": "channels.name",
       "default": "/hpc/home/jq81/work/cogan_lab_box/CoganLab/ECoG_Task_Data/Timestamps (MASTER).xlsx",
@@ -31,7 +36,7 @@
         "experiment.mat": "channels"
       },
       "sampleRate": "recording.sample_rate",
-      "digital": true,
+      "digital": false,
       "units": "uV"
     }
   },
@@ -104,9 +109,9 @@
     ]
   },
   "sessLabel": {
-    "left": "^[0-9]*?",
-    "right": "\\.((edf)|(mat))",
-    "content": ["[0-9]{46}"]
+    "left": "^NEVER_MATCH_SESSION$",
+    "right": "^$",
+    "content": ["^$"]
   },
   "runIndex": {
     "left": "run",
@@ -127,8 +132,8 @@
     "content": ["[0-9]{2}"]
   },
   "acq": {
-    "left": "[_ \\.]",
-    "right": "\\.((edf)|(EDF))",
+    "left": "[Ss]ession",
+    "right": "[_\\.]",
     "content": ["[0-9]{1,3}"],
     "fill": 2
   },

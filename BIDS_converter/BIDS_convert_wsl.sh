@@ -1,16 +1,21 @@
-#!/usr/bin/env bash
+#!/bin/bash
+ORIG_DATA_DIR="$HOME/work/cogan_lab_box/CoganLab"
+# OUTPUT_DIR="$ORIG_DATA_DIR/BIDS-1.1_GlobalLocal"
+OUTPUT_DIR="$HOME/work/BIDSify/result_temp"
+TASKS=("LexicalDecRepNoDelay")
+# SUB_IDS=(D90 D92 D94 D100)
+SUB_IDS=(D134 D138)
+# SUB_IDS=(D103 D121 D128 D133 D134 D137 D138)
 
-ORIG_DATA_DIR="$HOME/Box/CoganLab"
-TASKS=("Phoneme_Sequencing")
 
 #declare -l mylist[30]
 
 #BIDS_DIR="$OUTPUT_DIR/$TASK/BIDS"
 for TASK in "${TASKS[@]}"
  do
-    mapfile -t SUB_IDS < <(find "$ORIG_DATA_DIR/D_Data/$TASK" -maxdepth 1 -type d -name "D*" -exec basename {} \;)
-#    SUB_IDS=(D77)
-    OUTPUT_DIR="$HOME/Workspace/$TASK"
+    #uncomment mapfile line to run for all subjects
+    #mapfile -t SUB_IDS < <(find "$ORIG_DATA_DIR/D_Data/$TASK" -maxdepth 1 -type d -name "D*" -exec basename {} \;) # This line taks all the subjects
+    # OUTPUT_DIR="$ORIG_DATA_DIR/$TASK"
     BIDS_DIR="$OUTPUT_DIR/BIDS"
     ZIP=false
 
@@ -24,10 +29,10 @@ for TASK in "${TASKS[@]}"
      then
         rm -rf $BIDS_DIR
     fi
-    mkdir -p $BIDS_DIR
+    # mkdir -p $BIDS_DIR
     mkdir -p "$OUTPUT_DIR/stimuli"
     # shellcheck disable=SC2038
-    find "$ORIG_DATA_DIR/task_stimuli" -iname "$TASK" -type d -exec echo "{}/." \; | xargs -I{} cp -afv {} "$OUTPUT_DIR/stimuli/"
+    find "$ORIG_DATA_DIR/task_stimuli" -iname "Lexical_No_Delay" -type d -exec echo "{}/." \; | xargs -I{} cp -afv {} "$OUTPUT_DIR/stimuli/"
     TASKLOWER=$(echo $TASK | tr '[:upper:]' '[:lower:]')
     #echo "$ORIG_DATA_DIR/task_stimuli/$TASKLOWER/."
     #cp -av "$ORIG_DATA_DIR/task_stimuli/$TASKLOWER/." "$BIDS_DIR/stimuli/"
@@ -38,13 +43,16 @@ for TASK in "${TASKS[@]}"
         #IDSPLIT=( $(grep -Eo '[^[:digit:]]+|[[:digit:]]+' <<<"SUB_ID") )
         #NEW_ID="${IDSPLIT[0]}$(printf %04d ${IDSPLIT[1]})"
 
+        # Echo the SUB_ID to check if it's working
+        echo "Processing subject ID: $SUB_ID"
+
         if [ -d "$OUTPUT_DIR/$SUB_ID" ]
         then
             # shellcheck disable=SC2115
             rm -rf "$OUTPUT_DIR/$SUB_ID"
         fi
         mkdir -p "$OUTPUT_DIR/$SUB_ID"
-
+#
         #CT scan .nii
         find "$ORIG_DATA_DIR/ECoG_Recon_Full/$SUB_ID/elec_recon" -name "postimpRaw.nii.gz" -type f -exec cp -v {} "$OUTPUT_DIR/$SUB_ID/${SUB_ID}_CT.nii.gz" \;
         find "$ORIG_DATA_DIR/ECoG_Recon_Full/$SUB_ID/elec_recon" -regex ".*\($SUB_ID.*CT.*\)\|\(postimpRaw\)\.nii" -type f -exec cp -v {} "$OUTPUT_DIR/$SUB_ID/${SUB_ID}_CT.nii" \;
@@ -89,6 +97,10 @@ for TASK in "${TASKS[@]}"
         #find "$ORIG_DATA_DIR/ECoG_Task_Data" -type f -regex "Timestamps [MASTER].xlsx"  -exec cp -v {} "$OUTPUT_DIR/$SUB_ID/${SUB_ID}_timstamps.xlsx" \;
         #the big bad python code to convert the renamed files to BIDS
         #requires numpy, nibabel, and pathlib modules
+
+        # # Create necessary directories before writing files
+        # mkdir -p "$BIDS_DIR/sub-${SUB_ID}/ieeg"
+
         python -m data2bids -c config.json -i "$OUTPUT_DIR/$SUB_ID" -o $BIDS_DIR -v || { echo "BIDS conversion for $SUB_ID failed, trying next subject" ; continue; }
 
 		#rm -rf "$OUTPUT_DIR/$SUB_ID"
