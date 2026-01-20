@@ -4,7 +4,7 @@ ORIG_DATA_DIR="$HOME/work/cogan_lab_box/CoganLab"
 OUTPUT_DIR="$HOME/work/BIDSify/result_temp"
 TASKS=("LexicalDecRepNoDelay")
 # SUB_IDS=(D90 D92 D94 D100)
-SUB_IDS=(D134 D138)
+SUB_IDS=(D138)
 # SUB_IDS=(D103 D121 D128 D133 D134 D137 D138)
 
 
