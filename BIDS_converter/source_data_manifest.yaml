@@ -1,0 +1,110 @@
+# =============================================================================
+# Source-data manifest for the BIDS_convert pipeline  (multi-subject batch)
+# Stage these from a Globus SOURCE collection -> Duke DCC, then run BIDS_convert_wsl.sh.
+#
+# Derived from BIDS_convert_wsl.sh (find/cp patterns) + data2bids.py runtime reads.
+# A Globus transfer is always:  SRC_UUID:<src path>  ->  DEST_UUID:<dest path>
+# so every root carries BOTH a source base and a destination base.
+# =============================================================================
+
+endpoints:
+  source:
+    uuid: "<SOURCE_COLLECTION_UUID>"     # collection holding the master CoganLab data
+  dest:
+    uuid: "<DCC_COLLECTION_UUID>"        # the DCC collection that maps /work
+
+# --- Roots: each item's `path` is RELATIVE to one of these. ------------------
+# dest bases are the real DCC paths ($HOME/work resolves to /work/jq81).
+# src  bases are UNKNOWN until you browse the source collection:
+#     globus ls <SOURCE_UUID>:/          # find where CoganLab/ and ECoG_Recon/ live
+# NOTE: ECoG_Recon is a SIBLING of CoganLab, not a child of it.
+roots:
+  COGANLAB:
+    src:  "<SRC_BASE>/CoganLab"
+    dest: "/cwork/jq81/cogan_lab_box/CoganLab"
+  ECOG_RECON:
+    src:  "<SRC_BASE>/ECoG_Recon"
+    dest: "/cwork/jq81/cogan_lab_box/ECoG_Recon"
+
+# --- Batch dimensions: pull = (every task) x (every subject) -----------------
+tasks:
+  - name: LexicalDecRepNoDelay
+    stim: Lexical_No_Delay               # task_stimuli/<stim> subdir for this task
+  # - name: Phoneme_Sequencing
+  #   stim: "<stim dir name>"
+
+subjects:                                # add subjects freely; recon defaults to sub
+  - D139
+  # - D103
+  # - D121
+  # - D128
+
+recon_overrides:                         # RECON = SUB unless listed here (mirrors shell)
+  D139: D139A
+
+# --- Items ------------------------------------------------------------------
+# scope:  per_subject -> once per (task, subject), expands ${SUB} / ${RECON}
+#         per_task    -> once per task,            expands ${TASK} / ${STIM}
+#         global      -> once total
+# path is relative to roots[<root>].src (source side) / .dest (dest side).
+# include: optional whitelist of name globs for a recursive pull. CAVEAT: Globus
+#   --include/--exclude are set PER TRANSFER TASK, not per batch line -- the
+#   generator must emit a separate `globus transfer` task per distinct filter set
+#   (or drop the filter and pull the whole dir). No filter => pull everything under path.
+items:
+  - name: subject_data_dir
+    scope: per_subject
+    root: COGANLAB
+    path: "D_Data/${TASK}/${SUB}"
+    transfer: recursive
+    include: ["*${SUB}*.edf", "*${SUB}*.EDF", "*${SUB}*.ieeg.dat", "experiment.mat", "*[Tt]rial*.mat"]
+    required: true
+    note: >
+      One recursive pull of the whole subject dir, filtered to what BIDS_convert needs.
+      Grabs edf OR ieeg.dat (whichever exists) + experiment.mat + mat/*Trial*.mat at once,
+      so you never have to know per-subject which iEEG format is present.
+
+  - name: recon_ct_t1
+    scope: per_subject
+    root: COGANLAB
+    path: "ECoG_Recon_Full/${RECON}/elec_recon"
+    transfer: recursive
+    include: ["postimpRaw.nii.gz", "*CT*.nii", "T1.nii.gz"]
+    required: true
+    note: "CT (postimpRaw / *CT*.nii) + T1.nii.gz. Uses ${RECON} (D139 -> D139A)."
+
+  - name: recon_electrodes_ras
+    scope: per_subject
+    root: ECOG_RECON                     # <-- sibling root, not under CoganLab
+    path: "${RECON}/elec_recon"
+    transfer: recursive
+    include: ["${RECON}_elec_locations_RAS_*.txt"]
+    required: true
+
+  - name: stimuli
+    scope: per_task
+    root: COGANLAB
+    path: "task_stimuli/${STIM}"
+    transfer: recursive                  # whole stimulus tree; no filter
+    required: true
+
+  - name: phoneme_stim_starts
+    scope: per_task
+    root: COGANLAB
+    path: "ECoG_Task_Data/response_coding/PhonemeSequencingStimStarts.txt"
+    transfer: file
+    required: false
+    condition: "task == Phoneme_Sequencing"
+
+  - name: timestamps_master
+    scope: global                        # pull ONCE for the whole batch
+    root: COGANLAB
+    path: "ECoG_Task_Data/Timestamps (MASTER).xlsx"
+    transfer: file
+    required: true
+    consumed_by: data2bids
+    note: >
+      Read in place at runtime from the ABSOLUTE path hardcoded in config.json
+      (ieeg.headerData.default): /hpc/home/jq81/work/cogan_lab_box/CoganLab/
+      ECoG_Task_Data/Timestamps (MASTER).xlsx  (= the COGANLAB dest base).
+      Land it there, or edit config.json. NOT a per-subject file.
